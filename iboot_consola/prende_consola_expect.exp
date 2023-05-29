@@ -1,0 +1,25 @@
+#!/usr/bin/expect
+
+set timeout 5
+
+set outlet [lindex $argv 0]
+
+set onoff [lindex $argv 1]
+
+spawn telnet 192.168.0.252 23
+
+expect "Name: "
+send "admin\r"
+
+expect "Password: "
+send "admin\r"
+
+expect "iBootBar >"
+send "set outlet $outlet $onoff \r"
+
+expect "OK"
+
+expect "iBootBar >"
+send "get outlets \r"
+
+expect "iBootBar >"

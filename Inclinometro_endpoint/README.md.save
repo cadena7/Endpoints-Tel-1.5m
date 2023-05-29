@@ -1,0 +1,9 @@
+# inclinometro_endpoint
+Control del inclinometro y apertura de tapas del tel 1.5 via mqtt
+
+# Topicos en:
+oan/control/1.5m/inclinometro15m/
+
+# Ejemplos de publicaciones que recive el endpoint del control de inclinometro y tapas del 1.5m
+##### Cierra tapas de telescopio y buscadores #####
+mosquitto_pub -h 192.168.0.243 -t oan/control/1.5m/inclinometro15m/cerrar_telescopio -n

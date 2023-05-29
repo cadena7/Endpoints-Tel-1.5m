@@ -1,0 +1,3 @@
+pip3 install pexpect
+pip3 install simplejson
+pip3 install paho-mqtt
