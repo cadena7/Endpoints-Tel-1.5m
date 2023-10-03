@@ -26,9 +26,7 @@ import simplejson as json
 
 # TELNET IP
 RUCA_IP = "nc 192.168.0.34 6666"
-TELNET_IP = "192.168.0.252"
-USER = "admin"
-PASSWORD = "admin"
+
 
 # MQTT IP
 MQTT_HOST = "192.168.0.243"
@@ -101,11 +99,8 @@ try:
     print ("[+] ENVIANDO UN MENSAJE MQTT EN JSON AL RUCA 2.0 - RUEDA DE FILTROS ENDPOINT")
     client = mqtt.Client()
     client.connect(MQTT_HOST, 1883, 60)
-    while True:
-        nombresjsonsocket()
-        time.sleep(30)
-        nombresjsonmqtt()
-        time.sleep(30)
+    #nombresjsonsocket()
+    nombresjsonmqtt()
 
 
 except (KeyboardInterrupt, SystemExit): # If CTRL+C is pressed, exit cleanly:

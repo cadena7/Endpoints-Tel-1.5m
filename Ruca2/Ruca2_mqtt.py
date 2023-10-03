@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
 
 '''
-RUCA 2.0 - RUEDA DE FILTROS
-Version 0.3-dev          22/Oct/2022
+RUCA 2.0 - ENDPOINT MQTT
+Version 0.5-dev          04/Agosto/2023
 Edgar Omar Cadena Zepeda
 IA-UNAM-ENS
 cadena@astro.unam.mx
-
-Rueda de filtros RUCA 2.0, consiste en una rueda de filtros, un polarizador,
-dos reductores focales y una platina giratoria.
-El sistema consta de:
-1 - Motor a Pasos para Rueda de filtros
-1 - Motor a Pasos para Rueda de polarizadores
-1 - Motor a Pasos para Reductores focales
-1 - Motor DC con lectura de encoder para Platina giratoria
-2 - Interruptores límite N.A. para filtros (Indice y Posiciones 1-8)
-2 - Interruptores límite N.A. para polarizadores (Indice y Posiciones 1-5)
-2 - Interruptores límite N.A. para reductores (Indices: Azul, Rojo y Fuera)
-2 - Interruptores límite N.A. para platina (Indice, límite, límite duro (sin lectura))
 
 El control esta implementado mediante un código en lenguaje Python 3,
 basado en una microcomputadora de la línea Raspberry Pi 3 modelo B.
@@ -34,6 +22,7 @@ INICIO: busca inicio de los motores de paso
 
 Ejemplos con Mosquitto:
 
+Subscribirse a todos los topicos:
 mosquitto_sub -h 192.168.0.243 -t oan/control/1.5m/ruca2/# -d
 
 mosquitto_pub -h 192.168.0.243 -t oan/control/1.5m/ruca2/control -m INICIO
@@ -46,6 +35,8 @@ mosquitto_pub -h 192.168.0.243 -t oan/control/1.5m/ruca2/cambianombres -m (nombr
 
 Funciones Añadidas:
 
+Ver. 0.5 - Agregue try, except en el thread de monitoreo MQTT de la Ruca
+Ver. 0.4 - Fix JSON payload
 Ver. 0.3 - Al llegar a cada posicion manda actualizar topico Estado
 Ver. 0.2 - Ips de brokers y ruca actualizados
 Ver. 0.1 - En Desarrollo
@@ -81,19 +72,19 @@ MQTT_CAMBIA_NOMBRES = "oan/control/1.5m/ruca2/cambianombres"
 
 # MQTT on_connect
 def on_connect(client, user_data, flags, rc):
-    print("Resultado de conexion: " + str(rc))
+    print ("Resultado de conexion: " + str(rc))
     client.subscribe(MQTT_TOPIC)
-    print("Conectado a: " + MQTT_TOPIC)
+    print ("Conectado a: " + MQTT_TOPIC)
 
 
 # MQTT on_message
 def on_message(client, user_data, msg):
     #status = str(msg.payload)
-    #print("Received message '" + str(msg.payload.decode("utf-8")) + "' on topic '" + str(msg.topic) + "' with QoS " + str(msg.qos))
+    #print ("Received message '" + str(msg.payload.decode("utf-8")) + "' on topic '" + str(msg.topic) + "' with QoS " + str(msg.qos))
     topic = str(msg.topic)   # decodificar la string
     status = str(msg.payload.decode("utf-8"))   # decodificar la string
     status2 = status.upper() # convertir a mayusculas
-    print("Topico MQTT: " + topic + " Mensaje MQTT: " + status)
+    print ("Topico MQTT: " + topic + " Mensaje MQTT: " + status)
 
     if topic == MQTT_RUEDA:
         if status2 == '1':
@@ -350,14 +341,14 @@ def on_message(client, user_data, msg):
                     }
 
             salida_json = json.dumps(nuevosnombres, separators=(',', ':'), sort_keys=True) #data serialized
-            print(salida_json)
             cambio = subprocess.Popen(RUCA_IP, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr = subprocess.PIPE)
-            print ("[+] SOLICITANDO CAMBIO")
+            print ("[+] SOLICITANDO CAMBIO NOMBRES EN RUCA2")
             cambio1 = cambio.communicate(str.encode("CAMBIO ") + str.encode(salida_json))
             cambio.kill()
-            print ("[+] CAMBIA NOMBRES OK")
+            print ("[+] CAMBIA NOMBRES EN RUCA2 OK")
+            print(salida_json)
         except:
-            print ("[-] ERROR CAMBIANDO NOMBRES OK")
+            print ("[-] ERROR CAMBIANDO NOMBRES EN RUCA2")
             pass
         publicanombres()
 
@@ -365,29 +356,74 @@ def on_message(client, user_data, msg):
 def publicaestado():
     estado = subprocess.Popen(RUCA_IP, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr = subprocess.PIPE)
     estado1 = estado.communicate(str.encode("ESTADO"))[0]  #regresa un tuple [0,1]
-    print ("[+] SOLICITANDO VARIABLES ESTADORUEDA")
+    print ("[+] SOLICITANDO VARIABLES ESTADO RUCA2")
     #print(estado1)
     estadojson = estado1.decode('utf-8')    #decodificar el mensaje
     #print(estadojson)
     estado.kill()
-    msg_json = json.dumps(estadojson, separators=(',', ':'), sort_keys=True) #data serialized
-    print(msg_json)
+    estadojson1 = json.loads(estadojson)
+    msg = {
+        'RUEDA_INICIO': estadojson1['RUEDA_INICIO'],
+        'RUEDA_INDICE': estadojson1['RUEDA_INDICE'],
+        'POLARIZA_INICIO': estadojson1['POLARIZA_INICIO'],
+        'POLARIZA_INDICE': estadojson1['POLARIZA_INDICE'],
+        'REDUCTOR_AZUL': estadojson1['REDUCTOR_AZUL'],
+        'REDUCTOR_ROJO': estadojson1['REDUCTOR_ROJO'],
+        'REDUCTOR_FUERA': estadojson1['REDUCTOR_FUERA'],
+        'REDUCTOR_INDICE': estadojson1['REDUCTOR_INDICE'],
+        'RUEDA_FRENO': estadojson1['RUEDA_FRENO'],
+        'POLARIZA_FRENO': estadojson1['POLARIZA_FRENO'],
+        'REDUCTOR_FRENO': estadojson1['REDUCTOR_FRENO'],
+        'RUEDA_INDICE_SET': estadojson1['RUEDA_INDICE_SET'],
+        'POLARIZA_INDICE_SET': estadojson1['POLARIZA_INDICE_SET'],
+        'REDUCTOR_SET': estadojson1['REDUCTOR_SET'],
+        'RUEDA_PASOS': estadojson1['RUEDA_PASOS'],
+        'POLARIZA_PASOS': estadojson1['POLARIZA_PASOS'],
+        'REDUCTOR_PASOS': estadojson1['REDUCTOR_PASOS'],
+        'FIRST_INIT_RUEDA': estadojson1['FIRST_INIT_RUEDA'],
+        'FIRST_INIT_POLARIZA': estadojson1['FIRST_INIT_POLARIZA'],
+        'FIRST_INIT_REDUCTOR': estadojson1['FIRST_INIT_REDUCTOR'],
+        'RUEDA_FRENO_SENSOR': estadojson1['RUEDA_FRENO_SENSOR'],
+        'POLARIZA_FRENO_SENSOR': estadojson1['POLARIZA_FRENO_SENSOR'],
+        'RUEDA_PARO_EMERGENCIA': estadojson1['RUEDA_PARO_EMERGENCIA']
+        }
+    msg_json = json.dumps(msg, separators=(',', ':'), sort_keys=True) #data serialized
+    #print(msg_json)
     client.publish(MQTT_ESTADO, msg_json, retain=True)
-    print ("[+] STATUS OK")
+    print ("[+] STATUS DE VARIABLES ENVIADO OK")
 
 
 def publicanombres():
     nombres = subprocess.Popen(RUCA_IP, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr = subprocess.PIPE)
     nombres1 = nombres.communicate(str.encode("NOMBRE"))[0]  #regresa un tuple [0,1]
-    print ("[+] SOLICITANDO NOMBRES FILTROS")
+    print ("[+] SOLICITANDO NOMBRES FILTROS RUCA2")
     #print(nombres1)
     nombresjson = nombres1.decode('utf-8')    #decodificar el mensaje
     #print(nombresjson)
     nombres.kill()
-    msg_json = json.dumps(nombresjson, separators=(',', ':'), sort_keys=True) #data serialized
-    print(msg_json)
+    nombresjson1 = json.loads(nombresjson)
+    msg = {
+        'Filtro01': nombresjson1['Filtro01'],
+        'Filtro02': nombresjson1['Filtro02'],
+        'Filtro03': nombresjson1['Filtro03'],
+        'Filtro04': nombresjson1['Filtro04'],
+        'Filtro05': nombresjson1['Filtro05'],
+        'Filtro06': nombresjson1['Filtro06'],
+        'Filtro07': nombresjson1['Filtro07'],
+        'Filtro08': nombresjson1['Filtro08'],
+        'Polariza01': nombresjson1['Polariza01'],
+        'Polariza02': nombresjson1['Polariza02'],
+        'Polariza03': nombresjson1['Polariza03'],
+        'Polariza04': nombresjson1['Polariza04'],
+        'Polariza05': nombresjson1['Polariza05'],
+        'Reductor01': nombresjson1['Reductor01'],
+        'Reductor02': nombresjson1['Reductor02'],
+        'Reductor03': nombresjson1['Reductor03']
+        }
+    msg_json = json.dumps(msg, separators=(',', ':'), sort_keys=True) #data serialized
+    #print(msg_json)
     client.publish(MQTT_NOMBRES, msg_json, retain=True)
-    print ("[+] NAMES OK")
+    print ("[+] NAMES ENVIADOS OK")
 
 
 #Loop que publica los datos de estado en el broker MQTT
@@ -398,12 +434,16 @@ class MQTTLOOP(Thread):
 
     def run(self):
         while True :
-            publicaestado()
-            #actualiza el estado en MQTT cada 30 segundos
-            time.sleep(30)
-            publicanombres()
-            #actualiza el estado en MQTT cada 30 segundos
-            time.sleep(30)
+            try:
+                publicaestado()
+            except:
+                pass
+            time.sleep(15) #actualiza el estado en MQTT cada 15 segundos
+            try:
+                publicanombres()
+            except:
+                pass
+            time.sleep(15) #actualiza el estado en MQTT cada 15 segundos
 
 # Programa Principal
 try:
