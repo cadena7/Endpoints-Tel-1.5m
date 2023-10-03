@@ -288,4 +288,3 @@ except (KeyboardInterrupt, SystemExit): # If CTRL+C is pressed, exit cleanly:
     print("Adios Viajero")
     client.loop_stop()
     sys.exit()
-
